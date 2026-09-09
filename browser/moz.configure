@@ -72,6 +72,12 @@ def enable_enterprise(value):
 set_config("MOZ_ENTERPRISE", enable_enterprise)
 set_define("MOZ_ENTERPRISE", enable_enterprise)
 
+
+# The profile PKCS#11 module load (see toolkit/moz.configure) is turned off by
+# default for enterprise; module loading is driven by policy, not the
+# user-writable profile pkcs11.txt (bug 2068739).
+imply_option("--disable-profile-pkcs11-modules", False, when="--enable-enterprise")
+
 # Clear the default value to avoid mozilla.com url compiled into product
 imply_option("--with-crashreporter-url", "", when="--enable-enterprise")
 
