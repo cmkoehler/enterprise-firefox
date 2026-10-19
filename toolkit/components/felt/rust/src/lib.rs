@@ -46,18 +46,6 @@ pub(crate) static SHUTDOWN_LOCK_INTENT: AtomicBool = AtomicBool::new(false);
 // Whether a browser restart locks the session instead of signing out.
 pub(crate) static RESTART_LOCK_INTENT: AtomicBool = AtomicBool::new(false);
 
-fn normalize_arg(arg: String) -> String {
-    let mut normalized = arg;
-    normalized.retain(|c| c != '-' && c != '/');
-    normalized.to_lowercase()
-}
-
-fn arg_matches(target: &str) -> bool {
-    env::args()
-        .into_iter()
-        .any(|arg| normalize_arg(arg) == target)
-}
-
 fn has_env(target: &str) -> bool {
     match env::var(target) {
         Ok(v) => v == "1",
@@ -73,8 +61,15 @@ fn bypass_allowed() -> bool {
     matches!(mozbuild::config::MOZ_UPDATE_CHANNEL, "default")
 }
 
+/// Each argument is whether the matching command line flag was passed, as
+/// detected by CheckArg in nsAppRunner.cpp.
 #[no_mangle]
-pub extern "C" fn felt_init() {
+pub extern "C" fn felt_init(
+    felt_arg: bool,
+    felt_ui_arg: bool,
+    chrome_arg: bool,
+    safe_mode_arg: bool,
+) {
     trace!("felt_init()");
     env_logger::init();
 
@@ -84,11 +79,11 @@ pub extern "C" fn felt_init() {
 
     // There may be a -chrome ... being passed on the CLI, e.g. for jsdebugger
     // in this case, it is not expected the FELT UI is shown, not the browser UI
-    let force_chrome = arg_matches("chrome");
+    let force_chrome = chrome_arg;
     trace!("felt_init(): force_chrome={}", force_chrome);
 
-    let felt_ui_requested = arg_matches("feltui") || found_felt_ui_env;
-    let is_felt_browser = arg_matches("felt") && !force_chrome;
+    let felt_ui_requested = felt_ui_arg || found_felt_ui_env;
+    let is_felt_browser = felt_arg && !force_chrome;
 
     if is_felt_browser && felt_ui_requested {
         panic!("Cannot have both -feltUI and -felt args");
@@ -101,7 +96,7 @@ pub extern "C" fn felt_init() {
     trace!("felt_init(): is_felt_browser={}", is_felt_browser);
     IS_FELT_BROWSER.store(is_felt_browser, Ordering::Relaxed);
 
-    let is_felt_safe_mode = arg_matches("safemode");
+    let is_felt_safe_mode = safe_mode_arg;
     trace!("felt_init(): is_felt_safe_mode={}", is_felt_safe_mode);
     IS_FELT_SAFE_MODE.store(is_felt_safe_mode, Ordering::Relaxed);
 

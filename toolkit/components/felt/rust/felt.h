@@ -10,7 +10,8 @@
 
 extern "C" {
 
-void felt_init();
+void felt_init(bool aFeltArg, bool aFeltUIArg, bool aChromeArg,
+               bool aSafeModeArg);
 
 bool is_felt_ui();
 

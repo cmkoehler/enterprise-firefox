@@ -7387,7 +7387,10 @@ int XREMain::XRE_main(int argc, char* argv[], const BootstrapConfig& aConfig) {
 #if defined(MOZ_ENTERPRISE)
   if (XRE_IsParentProcess()) {
     // Initialize Felt state up-front so we can decide whether to continue.
-    felt_init();
+    felt_init(CheckArgExists("felt") != ARG_NONE,
+              CheckArgExists("feltui") != ARG_NONE,
+              CheckArgExists("chrome") != ARG_NONE,
+              CheckArgExists("safe-mode") != ARG_NONE);
 
     // FELT IPC channel
     Maybe<const char*> felt =
