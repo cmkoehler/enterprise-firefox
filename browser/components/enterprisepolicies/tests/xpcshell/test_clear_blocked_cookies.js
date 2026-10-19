@@ -157,7 +157,10 @@ add_task(async function test_cookies_cleared_with_preset_marker() {
     [],
     "Stored cookies for blocked origins are cleared even if the marker pref is set"
   );
-  Services.prefs.clearUserPref(markerPref);
+  ok(
+    !Services.prefs.prefHasUserValue(markerPref),
+    "The obsolete marker pref is cleared"
+  );
 });
 
 add_task(async function test_only_blocked_host_and_subdomains_cleared() {

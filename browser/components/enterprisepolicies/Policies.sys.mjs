@@ -961,22 +961,30 @@ export var Policies = {
         }
       }
 
+      lazy.clearRunOnceModification("clearCookiesForBlockedHosts");
       for (const { hostname } of param.Block ?? []) {
-        for (const cookie of Services.cookies.getCookiesWithOriginAttributes(
-          "{}",
-          hostname
-        )) {
-          if (
-            cookie.rawHost == hostname ||
-            cookie.rawHost.endsWith(`.${hostname}`)
-          ) {
-            Services.cookies.remove(
-              cookie.host,
-              cookie.name,
-              cookie.path,
-              cookie.originAttributes
-            );
+        try {
+          for (const cookie of Services.cookies.getCookiesWithOriginAttributes(
+            "{}",
+            hostname
+          )) {
+            if (
+              cookie.rawHost == hostname ||
+              cookie.rawHost.endsWith(`.${hostname}`)
+            ) {
+              Services.cookies.remove(
+                cookie.host,
+                cookie.name,
+                cookie.path,
+                cookie.originAttributes
+              );
+            }
           }
+        } catch (ex) {
+          lazy.reportFailure(
+            "Cookies",
+            `Unable to clear cookies for blocked host - ${hostname}`
+          );
         }
       }
 
