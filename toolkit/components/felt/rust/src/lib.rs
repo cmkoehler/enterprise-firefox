@@ -61,15 +61,19 @@ fn bypass_allowed() -> bool {
     matches!(mozbuild::config::MOZ_UPDATE_CHANNEL, "default")
 }
 
-/// Each argument is whether the matching command line flag was passed, as
-/// detected by CheckArg in nsAppRunner.cpp.
+extern "C" {
+    // Defined in toolkit/xre/nsAppRunner.cpp.
+    fn felt_check_arg_exists(arg: *const c_char) -> bool;
+}
+
+/// Whether the command line has the flag `arg` (lowercase), parsed the same
+/// way as every other Gecko flag.
+fn has_arg(arg: &CStr) -> bool {
+    unsafe { felt_check_arg_exists(arg.as_ptr()) }
+}
+
 #[no_mangle]
-pub extern "C" fn felt_init(
-    felt_arg: bool,
-    felt_ui_arg: bool,
-    chrome_arg: bool,
-    safe_mode_arg: bool,
-) {
+pub extern "C" fn felt_init() {
     trace!("felt_init()");
     env_logger::init();
 
@@ -79,11 +83,11 @@ pub extern "C" fn felt_init(
 
     // There may be a -chrome ... being passed on the CLI, e.g. for jsdebugger
     // in this case, it is not expected the FELT UI is shown, not the browser UI
-    let force_chrome = chrome_arg;
+    let force_chrome = has_arg(cstr!("chrome"));
     trace!("felt_init(): force_chrome={}", force_chrome);
 
-    let felt_ui_requested = felt_ui_arg || found_felt_ui_env;
-    let is_felt_browser = felt_arg && !force_chrome;
+    let felt_ui_requested = has_arg(cstr!("feltui")) || found_felt_ui_env;
+    let is_felt_browser = has_arg(cstr!("felt")) && !force_chrome;
 
     if is_felt_browser && felt_ui_requested {
         panic!("Cannot have both -feltUI and -felt args");
@@ -96,7 +100,7 @@ pub extern "C" fn felt_init(
     trace!("felt_init(): is_felt_browser={}", is_felt_browser);
     IS_FELT_BROWSER.store(is_felt_browser, Ordering::Relaxed);
 
-    let is_felt_safe_mode = safe_mode_arg;
+    let is_felt_safe_mode = has_arg(cstr!("safe-mode"));
     trace!("felt_init(): is_felt_safe_mode={}", is_felt_safe_mode);
     IS_FELT_SAFE_MODE.store(is_felt_safe_mode, Ordering::Relaxed);
 

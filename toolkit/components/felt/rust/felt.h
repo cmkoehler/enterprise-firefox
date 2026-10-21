@@ -10,8 +10,10 @@
 
 extern "C" {
 
-void felt_init(bool aFeltArg, bool aFeltUIArg, bool aChromeArg,
-               bool aSafeModeArg);
+void felt_init();
+
+// Implemented in nsAppRunner.cpp for felt_init(). aArg must be lowercase.
+bool felt_check_arg_exists(const char* aArg);
 
 bool is_felt_ui();
 

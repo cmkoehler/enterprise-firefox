@@ -556,6 +556,12 @@ static ArgResult CheckArgExists(const char* aArg) {
   return CheckArg(aArg, nullptr, CheckArgFlag::None);
 }
 
+#if defined(MOZ_ENTERPRISE)
+bool felt_check_arg_exists(const char* aArg) {
+  return CheckArgExists(aArg) != ARG_NONE;
+}
+#endif
+
 static bool RequestedHeadlessMode() {
   return CheckArgExists("headless") || CheckArgExists("screenshot");
 }
@@ -7387,10 +7393,7 @@ int XREMain::XRE_main(int argc, char* argv[], const BootstrapConfig& aConfig) {
 #if defined(MOZ_ENTERPRISE)
   if (XRE_IsParentProcess()) {
     // Initialize Felt state up-front so we can decide whether to continue.
-    felt_init(CheckArgExists("felt") != ARG_NONE,
-              CheckArgExists("feltui") != ARG_NONE,
-              CheckArgExists("chrome") != ARG_NONE,
-              CheckArgExists("safe-mode") != ARG_NONE);
+    felt_init();
 
     // FELT IPC channel
     Maybe<const char*> felt =
