@@ -558,7 +558,20 @@ static ArgResult CheckArgExists(const char* aArg) {
 
 #if defined(MOZ_ENTERPRISE)
 bool felt_check_arg_exists(const char* aArg) {
-  return CheckArgExists(aArg) != ARG_NONE;
+  if (CheckArgExists(aArg) != ARG_NONE) {
+    return true;
+  }
+#  ifdef XP_WIN
+  // nsCommandLine also accepts /flag:value on Windows, which CheckArg doesn't.
+  const size_t len = strlen(aArg);
+  for (int i = 1; i < gArgc; ++i) {
+    const char* arg = gArgv[i];
+    if (arg[0] == '/' && ArgStartsWith(arg + 1, aArg) && arg[1 + len] == ':') {
+      return true;
+    }
+  }
+#  endif
+  return false;
 }
 #endif
 
