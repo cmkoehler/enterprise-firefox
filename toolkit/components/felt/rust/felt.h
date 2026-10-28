@@ -15,6 +15,11 @@ void felt_init();
 // Implemented in nsAppRunner.cpp for felt_init(). aArg must be lowercase.
 bool felt_check_arg_exists(const char* aArg);
 
+// Implemented in nsAppRunner.cpp. Whether the Windows-only /aArg:value form,
+// which CheckArg doesn't parse, is on the command line. Always false
+// elsewhere. aArg must be lowercase.
+bool felt_check_windows_colon_arg(const char* aArg);
+
 bool is_felt_ui();
 
 #ifdef MOZ_WIDGET_GTK

@@ -11,8 +11,10 @@
 #include "mozilla/toolkit/components/felt/felt.h"
 #include "nsAppRunner.h"
 
-static bool CheckArgWith(std::initializer_list<const char*> aArgs,
-                         const char* aArg) {
+// Runs aCheck(aArg) with gArgc/gArgv temporarily set to aArgs.
+static bool CheckWith(bool (*aCheck)(const char*),
+                      std::initializer_list<const char*> aArgs,
+                      const char* aArg) {
   std::vector<std::string> storage{"firefox"};
   storage.insert(storage.end(), aArgs.begin(), aArgs.end());
   std::vector<char*> argv;
@@ -25,35 +27,48 @@ static bool CheckArgWith(std::initializer_list<const char*> aArgs,
   char** const savedArgv = gArgv;
   gArgc = static_cast<int>(storage.size());
   gArgv = argv.data();
-  const bool result = felt_check_arg_exists(aArg);
+  const bool result = aCheck(aArg);
   gArgc = savedArgc;
   gArgv = savedArgv;
   return result;
 }
 
-TEST(FeltCheckArg, Forms)
-{
-  EXPECT_TRUE(
-      CheckArgWith({"-chrome", "chrome://foo/content/bar.xhtml"}, "chrome"));
-  EXPECT_TRUE(CheckArgWith({"--CHROME"}, "chrome"));
-  EXPECT_TRUE(
-      CheckArgWith({"--chrome=chrome://foo/content/bar.xhtml"}, "chrome"));
-  EXPECT_FALSE(
-      CheckArgWith({"-url", "chrome://foo/content/bar.xhtml"}, "chrome"));
-  EXPECT_FALSE(CheckArgWith({"--chromium"}, "chrome"));
-  EXPECT_FALSE(CheckArgWith({"-chrome:x"}, "chrome"));
+static bool HasArg(std::initializer_list<const char*> aArgs, const char* aArg) {
+  return CheckWith(felt_check_arg_exists, aArgs, aArg);
 }
 
-TEST(FeltCheckArg, WindowsSlashColonForm)
+static bool HasColonArg(std::initializer_list<const char*> aArgs,
+                        const char* aArg) {
+  return CheckWith(felt_check_windows_colon_arg, aArgs, aArg);
+}
+
+TEST(FeltCheckArg, Forms)
+{
+  EXPECT_TRUE(HasArg({"-chrome", "chrome://foo/content/bar.xhtml"}, "chrome"));
+  EXPECT_TRUE(HasArg({"--CHROME"}, "chrome"));
+  EXPECT_TRUE(HasArg({"--chrome=chrome://foo/content/bar.xhtml"}, "chrome"));
+  EXPECT_FALSE(HasArg({"-url", "chrome://foo/content/bar.xhtml"}, "chrome"));
+  EXPECT_FALSE(HasArg({"--chromium"}, "chrome"));
+  EXPECT_FALSE(HasArg({"-chrome:x"}, "chrome"));
+  EXPECT_FALSE(HasArg({"/felt:socket"}, "felt"));
+  EXPECT_FALSE(HasArg({"/safe-mode:x"}, "safe-mode"));
+#ifdef XP_WIN
+  EXPECT_TRUE(HasArg({"/chrome", "chrome://foo/content/bar.xhtml"}, "chrome"));
+#endif
+}
+
+TEST(FeltCheckArg, WindowsColonForm)
 {
 #ifdef XP_WIN
   EXPECT_TRUE(
-      CheckArgWith({"/chrome:chrome://foo/content/bar.xhtml"}, "chrome"));
-  EXPECT_TRUE(CheckArgWith({"/CHROME:x"}, "chrome"));
-  EXPECT_TRUE(CheckArgWith({"/felt:socket"}, "felt"));
-  EXPECT_FALSE(CheckArgWith({"/chromium:x"}, "chrome"));
+      HasColonArg({"/chrome:chrome://foo/content/bar.xhtml"}, "chrome"));
+  EXPECT_TRUE(HasColonArg({"/CHROME:x"}, "chrome"));
+  EXPECT_TRUE(HasColonArg({"/chrome:"}, "chrome"));
+  EXPECT_FALSE(HasColonArg({"/chromium:x"}, "chrome"));
+  EXPECT_FALSE(HasColonArg({"/chrome", "x"}, "chrome"));
+  EXPECT_FALSE(HasColonArg({"-chrome:x"}, "chrome"));
 #else
   EXPECT_FALSE(
-      CheckArgWith({"/chrome:chrome://foo/content/bar.xhtml"}, "chrome"));
+      HasColonArg({"/chrome:chrome://foo/content/bar.xhtml"}, "chrome"));
 #endif
 }

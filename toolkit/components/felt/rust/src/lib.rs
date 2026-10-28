@@ -64,12 +64,19 @@ fn bypass_allowed() -> bool {
 extern "C" {
     // Defined in toolkit/xre/nsAppRunner.cpp.
     fn felt_check_arg_exists(arg: *const c_char) -> bool;
+    fn felt_check_windows_colon_arg(arg: *const c_char) -> bool;
 }
 
 /// Whether the command line has the flag `arg` (lowercase), parsed the same
 /// way as every other Gecko flag.
 fn has_arg(arg: &CStr) -> bool {
     unsafe { felt_check_arg_exists(arg.as_ptr()) }
+}
+
+/// Whether the command line has `/arg:value` (Windows only), which
+/// nsCommandLine reads as `-arg value` but `has_arg` doesn't match.
+fn has_windows_colon_arg(arg: &CStr) -> bool {
+    unsafe { felt_check_windows_colon_arg(arg.as_ptr()) }
 }
 
 #[no_mangle]
@@ -83,7 +90,8 @@ pub extern "C" fn felt_init() {
 
     // There may be a -chrome ... being passed on the CLI, e.g. for jsdebugger
     // in this case, it is not expected the FELT UI is shown, not the browser UI
-    let force_chrome = has_arg(cstr!("chrome"));
+    // -chrome is handled by nsCommandLine, so also match its /chrome:URL form.
+    let force_chrome = has_arg(cstr!("chrome")) || has_windows_colon_arg(cstr!("chrome"));
     trace!("felt_init(): force_chrome={}", force_chrome);
 
     let felt_ui_requested = has_arg(cstr!("feltui")) || found_felt_ui_env;
