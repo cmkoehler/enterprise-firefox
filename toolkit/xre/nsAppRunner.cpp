@@ -561,17 +561,31 @@ bool felt_check_arg_exists(const char* aArg) {
   return CheckArgExists(aArg) != ARG_NONE;
 }
 
-bool felt_check_windows_colon_arg(const char* aArg) {
-#  ifdef XP_WIN
-  // nsCommandLine also accepts /flag:value on Windows, which CheckArg doesn't.
-  const size_t len = strlen(aArg);
+// -chrome is consumed by nsCommandLine rather than CheckArg, so match it the
+// way nsCommandLine::Init splits arguments: -chrome[=value], --chrome[=value]
+// and, on Windows, /chrome[:value] (but not /chrome=value).
+bool felt_has_chrome_arg() {
+  static const char kChrome[] = "chrome";
+  const size_t len = strlen(kChrome);
   for (char** arg = gArgv + 1; *arg; ++arg) {
-    if ((*arg)[0] == '/' && ArgStartsWith(*arg + 1, aArg) &&
-        (*arg)[1 + len] == ':') {
+    const char* option;
+    char separator;
+    if ((*arg)[0] == '-') {
+      option = (*arg)[1] == '-' ? *arg + 2 : *arg + 1;
+      separator = '=';
+#  ifdef XP_WIN
+    } else if ((*arg)[0] == '/') {
+      option = *arg + 1;
+      separator = ':';
+#  endif
+    } else {
+      continue;
+    }
+    if (ArgStartsWith(option, kChrome) &&
+        (option[len] == '\0' || option[len] == separator)) {
       return true;
     }
   }
-#  endif
   return false;
 }
 #endif
